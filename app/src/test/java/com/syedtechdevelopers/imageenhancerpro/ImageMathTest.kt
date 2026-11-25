@@ -40,6 +40,32 @@ class ImageMathTest {
         assertEquals(tx, r[2], 1e-3f); assertEquals(ty, r[3], 1e-3f)
     }
 
+    /** Aligning any labelling of the 5 points must give an upright face (positive scale, small rotation). */
+    @Test
+    fun facePointsAlwaysGiveUprightCrop() {
+        val t = ImageMath.TEMPLATE
+        for (angle in listOf(0.0, 25.0, -40.0, 90.0, 180.0)) for (mirror in listOf(false, true)) for (swap in listOf(false, true)) {
+            val r = Math.toRadians(angle); val c = Math.cos(r).toFloat(); val s = Math.sin(r).toFloat()
+            // A face in the picture = template turned by angle (mirrored photos keep an upright-looking face).
+            val pts = FloatArray(10)
+            for (i in 0 until 5) {
+                val x = t[2 * i] - 256f; val y = t[2 * i + 1] - 256f
+                pts[2 * i] = 600f + 2f * (c * x - s * y); pts[2 * i + 1] = 500f + 2f * (s * x + c * y)
+            }
+            fun sw(a: Int, b: Int) { for (k in 0..1) { val v = pts[2 * a + k]; pts[2 * a + k] = pts[2 * b + k]; pts[2 * b + k] = v } }
+            if (mirror) for (i in 0 until 5) pts[2 * i] = 1200f - pts[2 * i]
+            if (swap) { sw(0, 1); sw(3, 4) } // labels the other way round
+            val o = ImageMath.orderFacePoints(pts)!!
+            val m = ImageMath.similarity(o, t)
+            val scale = Math.hypot(m[0].toDouble(), m[1].toDouble())
+            val rot = Math.toDegrees(Math.atan2(m[1].toDouble(), m[0].toDouble()))
+            assertEquals("scale a=$angle m=$mirror s=$swap", 0.5, scale, 0.05)
+            val expected = if (mirror) angle else -angle
+            val diff = ((rot - expected + 540) % 360) - 180
+            assertTrue("rotation $rot vs $expected (a=$angle m=$mirror s=$swap)", Math.abs(diff) < 5)
+        }
+    }
+
     @Test
     fun maskIsSoftAtEdgesAndSolidInside() {
         val m = ImageMath.faceMask()

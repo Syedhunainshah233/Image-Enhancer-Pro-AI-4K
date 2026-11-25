@@ -175,28 +175,20 @@ class Enhancer(private val context: Context) {
         )
         try {
             val found = detector.process(InputImage.fromBitmap(det, 0)).await()
-            // Image order expected by GFPGAN: eye on the left of the picture first (the person's right eye).
-            val order = intArrayOf(
-                FaceLandmark.RIGHT_EYE, FaceLandmark.LEFT_EYE, FaceLandmark.NOSE_BASE,
-                FaceLandmark.MOUTH_RIGHT, FaceLandmark.MOUTH_LEFT,
+            val types = intArrayOf(
+                FaceLandmark.LEFT_EYE, FaceLandmark.RIGHT_EYE, FaceLandmark.NOSE_BASE,
+                FaceLandmark.MOUTH_LEFT, FaceLandmark.MOUTH_RIGHT,
             )
             return found
                 .sortedByDescending { it.boundingBox.width() * it.boundingBox.height() }
                 .mapNotNull { face ->
-                    val pts = FloatArray(10)
-                    for ((i, type) in order.withIndex()) {
+                    val raw = FloatArray(10)
+                    for ((i, type) in types.withIndex()) {
                         val p = face.getLandmark(type)?.position ?: return@mapNotNull null
-                        pts[2 * i] = p.x / s
-                        pts[2 * i + 1] = p.y / s
+                        raw[2 * i] = p.x / s
+                        raw[2 * i + 1] = p.y / s
                     }
-                    val eyeDist = hypot(pts[2] - pts[0], pts[3] - pts[1])
-                    if (eyeDist < 8f) return@mapNotNull null
-                    // Nose base sits a little under the nose tip used by the template: nudge it towards the eyes.
-                    val ex = (pts[0] + pts[2]) / 2f
-                    val ey = (pts[1] + pts[3]) / 2f
-                    pts[4] += (ex - pts[4]) * 0.15f
-                    pts[5] += (ey - pts[5]) * 0.15f
-                    pts
+                    ImageMath.orderFacePoints(raw)
                 }
                 .take(MAX_FACES)
         } finally {

@@ -193,8 +193,6 @@ jobs:
       - name: Build test-ads app + device tests
         run: |
           chmod +x gradlew
-          # Sample portrait from the GFPGAN project, used only by the test.
-          curl -sfL -o app/src/androidTest/assets/face.jpg https://raw.githubusercontent.com/TencentARC/GFPGAN/master/inputs/whole_imgs/00.jpg || true
           ./gradlew :app:bundleDebug :app:assembleDebugAndroidTest --stacktrace
           curl -sL -o "$RUNNER_TEMP/bundletool.jar" "$BUNDLETOOL"
           java -jar "$RUNNER_TEMP/bundletool.jar" build-apks --bundle=app/build/outputs/bundle/debug/app-debug.aab \

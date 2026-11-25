@@ -12,4 +12,3 @@ captures/
 *.keystore
 !app/debug.keystore
 *.jks
-app/src/androidTest/assets/face.jpg

@@ -85,6 +85,34 @@ object ImageMath {
         return floatArrayOf(a.toFloat(), b.toFloat(), tx.toFloat(), ty.toFloat())
     }
 
+    /**
+     * Puts 5 face points (two eyes, nose, two mouth corners, any left/right labelling) into the
+     * template order: picture-left eye, picture-right eye, nose, picture-left mouth, picture-right mouth,
+     * as seen on an upright face. "Left" is worked out from the face itself (eyes → mouth = down),
+     * so tilted, sideways or mirrored faces all line up. Returns null for unusable points.
+     */
+    fun orderFacePoints(p: FloatArray): FloatArray? {
+        var e1x = p[0]; var e1y = p[1]; var e2x = p[2]; var e2y = p[3]
+        val nx = p[4]; val ny = p[5]
+        var m1x = p[6]; var m1y = p[7]; var m2x = p[8]; var m2y = p[9]
+        val emx = (e1x + e2x) / 2; val emy = (e1y + e2y) / 2
+        val dx = (m1x + m2x) / 2 - emx; val dy = (m1y + m2y) / 2 - emy // "down" along the face
+        val dLen = kotlin.math.hypot(dx, dy)
+        val eyeDist = kotlin.math.hypot(e2x - e1x, e2y - e1y)
+        if (dLen < 4f || eyeDist < 8f) return null
+        val lx = -dy; val ly = dx // picture-left of an upright face
+        if ((e1x - emx) * lx + (e1y - emy) * ly < (e2x - emx) * lx + (e2y - emy) * ly) {
+            e1x = e2x.also { e2x = e1x }; e1y = e2y.also { e2y = e1y }
+        }
+        val mmx = (m1x + m2x) / 2; val mmy = (m1y + m2y) / 2
+        if ((m1x - mmx) * lx + (m1y - mmy) * ly < (m2x - mmx) * lx + (m2y - mmy) * ly) {
+            m1x = m2x.also { m2x = m1x }; m1y = m2y.also { m2y = m1y }
+        }
+        // ML Kit gives the nose base; the template uses the nose tip a little higher.
+        val tnx = nx + (emx - nx) * 0.15f; val tny = ny + (emy - ny) * 0.15f
+        return floatArrayOf(e1x, e1y, e2x, e2y, tnx, tny, m1x, m1y, m2x, m2y)
+    }
+
     /** Soft-edged square mask (0..1) for pasting the restored face back without a visible box. */
     fun faceMask(size: Int = FACE, edge: Float = 20f, feather: Float = 40f): FloatArray {
         val m = FloatArray(size * size)

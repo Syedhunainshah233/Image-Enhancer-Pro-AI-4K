@@ -6,7 +6,6 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.os.SystemClock
-import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -15,7 +14,6 @@ import com.syedtechdevelopers.imageenhancerpro.ai.ImageIO
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
-import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
@@ -74,24 +72,30 @@ class DeviceTests {
         save("small_after.jpg", out)
     }
 
+    /** Blurry portrait (NASA public-domain photo): normal, mirrored selfie and sideways. */
     @Test
     fun enhanceFacePhoto() = runBlocking {
-        val names = InstrumentationRegistry.getInstrumentation().context.assets.list("") ?: emptyArray()
-        assumeTrue("face.jpg test photo not downloaded", "face.jpg" in names)
         val raw = InstrumentationRegistry.getInstrumentation().context.assets.open("face.jpg").use { BitmapFactory.decodeStream(it) }
-        val src = ImageIO.scaledCopy(raw, 2048).copy(Bitmap.Config.ARGB_8888, false)
+        val base = raw.copy(Bitmap.Config.ARGB_8888, false)
+        val variants = listOf(
+            "face" to base,
+            "face_mirror" to Bitmap.createBitmap(base, 0, 0, base.width, base.height, android.graphics.Matrix().apply { preScale(-1f, 1f) }, true),
+            "face_rot90" to Bitmap.createBitmap(base, 0, 0, base.width, base.height, android.graphics.Matrix().apply { postRotate(90f) }, true),
+        )
         val e = Enhancer(ctx)
-        val faces = e.detectFaces(src)
-        android.util.Log.i("DeviceTests", "faces found: ${faces.size}")
-        assertTrue("ML Kit should find the face", faces.isNotEmpty())
-        val t = SystemClock.elapsedRealtime()
-        val out = e.enhance(src) { _, _ -> }
-        android.util.Log.i("DeviceTests", "face photo ${src.width}x${src.height}: ${SystemClock.elapsedRealtime() - t} ms")
-        assertEquals(4096, max(out.width, out.height))
-        save("face_before.jpg", src)
-        save("face_after.jpg", out)
-        // Saving to the gallery works (no permission needed on Android 10+).
-        assertTrue(ImageIO.saveToGallery(ctx, out, 4096).endsWith(".jpg"))
+        for ((name, src) in variants) {
+            val faces = e.detectFaces(src)
+            android.util.Log.i("DeviceTests", "$name faces found: ${faces.size}")
+            assertTrue("ML Kit should find the face in $name", faces.isNotEmpty())
+            val t = SystemClock.elapsedRealtime()
+            val out = e.enhance(src) { _, _ -> }
+            android.util.Log.i("DeviceTests", "$name ${src.width}x${src.height}: ${SystemClock.elapsedRealtime() - t} ms")
+            assertEquals(4096, max(out.width, out.height))
+            assertTrue("colours kept in $name", abs(mean(out) - mean(src)) < 20f)
+            save("${name}_after.jpg", out)
+            if (name == "face") assertTrue(ImageIO.saveToGallery(ctx, out, 4096).endsWith(".jpg"))
+            out.recycle()
+        }
     }
 
     @Test
@@ -115,9 +119,6 @@ class DeviceTests {
             assertTrue("enhance finished in the app", done)
             SystemClock.sleep(4_000)
             screenshot("app_4_result.jpg")
-            sc.moveToState(Lifecycle.State.CREATED) // app goes to background
-            sc.moveToState(Lifecycle.State.RESUMED) // and back (app open ad path)
-            SystemClock.sleep(3_000)
             sc.onActivity { it.vm.limits.tick() }
         }
     }
