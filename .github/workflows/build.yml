@@ -1,0 +1,144 @@
+name: Build Image Enhancer Pro
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore: [ 'README.md', 'store/**' ]
+  workflow_dispatch:
+
+env:
+  MODELS_TAG: models-v1
+  BUNDLETOOL: https://github.com/google/bundletool/releases/download/1.17.2/bundletool-all-1.17.2.jar
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Get AI models (kept as a GitHub release, too big for git)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "$MODELS_TAG" --dir models/src/main/assets --pattern '*.onnx' --pattern 'SHA256SUMS'
+          cd models/src/main/assets && sha256sum -c SHA256SUMS && rm SHA256SUMS && ls -la
+
+      - name: Build
+        env:
+          KEYSTORE_BASE64: ${{ secrets.IEP_KEYSTORE_BASE64 }}
+          IEP_KEYSTORE_PASSWORD: ${{ secrets.IEP_KEYSTORE_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          mkdir -p out
+          curl -sL -o "$RUNNER_TEMP/bundletool.jar" "$BUNDLETOOL"
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "Release key found: real ads + Play Store bundle"
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+            export IEP_KEYSTORE="$RUNNER_TEMP/upload.jks"
+            ./gradlew :app:bundleRelease --stacktrace
+            AAB=app/build/outputs/bundle/release/app-release.aab
+            cp "$AAB" out/ImageEnhancerPro-playstore.aab
+            KS="$IEP_KEYSTORE"; KS_PASS="$IEP_KEYSTORE_PASSWORD"; ALIAS=imageenhancer
+            echo "KIND=release" >> "$GITHUB_ENV"
+          else
+            echo "No release key: test-ads APK (release build is compiled too, as a check)"
+            ./gradlew :app:bundleDebug :app:bundleRelease --stacktrace
+            AAB=app/build/outputs/bundle/debug/app-debug.aab
+            KS=app/debug.keystore; KS_PASS=android; ALIAS=androiddebugkey
+            echo "KIND=debug" >> "$GITHUB_ENV"
+          fi
+          # One APK with everything (app + AI models) for installing straight on a phone.
+          java -jar "$RUNNER_TEMP/bundletool.jar" build-apks --bundle="$AAB" --output="$RUNNER_TEMP/u.apks" --mode=universal \
+            --ks="$KS" --ks-pass="pass:$KS_PASS" --ks-key-alias="$ALIAS" --key-pass="pass:$KS_PASS"
+          unzip -o -q "$RUNNER_TEMP/u.apks" universal.apk -d "$RUNNER_TEMP"
+          cp "$RUNNER_TEMP/universal.apk" out/ImageEnhancerPro.apk
+          ls -la out
+
+      - name: Check APK (AI files inside, 16 KB native alignment for Play)
+        run: |
+          unzip -v out/ImageEnhancerPro.apk | grep -E "onnx|lib/arm64-v8a" || true
+          unzip -l out/ImageEnhancerPro.apk | grep -q gfpgan_v14.onnx
+          mkdir -p "$RUNNER_TEMP/so" && unzip -o -q out/ImageEnhancerPro.apk 'lib/arm64-v8a/*' -d "$RUNNER_TEMP/so"
+          python3 - "$RUNNER_TEMP/so/lib/arm64-v8a" <<'EOF'
+          import os, struct, sys
+          bad = []
+          for f in sorted(os.listdir(sys.argv[1])):
+              d = open(os.path.join(sys.argv[1], f), 'rb').read()
+              phoff, = struct.unpack_from('<Q', d, 0x20); phsz, phn = struct.unpack_from('<HH', d, 0x36)
+              aligns = [struct.unpack_from('<Q', d, phoff + i * phsz + 0x30)[0] for i in range(phn)
+                        if struct.unpack_from('<I', d, phoff + i * phsz)[0] == 1]
+              ok = min(aligns) >= 16384
+              print(('OK   ' if ok else 'BAD  ') + f, min(aligns))
+              if not ok: bad.append(f)
+          sys.exit(1 if bad else 0)
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ImageEnhancerPro-build
+          path: out/
+
+      - name: Publish download link
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          if [ "$KIND" = "release" ]; then
+            NOTES="Image Enhancer Pro $VERSION (${GITHUB_SHA::7}), real ads. ImageEnhancerPro.apk: install on a phone. ImageEnhancerPro-playstore.aab: upload to Google Play Console."
+          else
+            NOTES="Image Enhancer Pro $VERSION (${GITHUB_SHA::7}), test-ads build. Download ImageEnhancerPro.apk on your phone and open it to install."
+          fi
+          gh release create latest out/* --title "Image Enhancer Pro $VERSION" --notes "$NOTES" --latest
+
+  screenshots:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Run tests
+        id: tests
+        continue-on-error: true
+        run: |
+          chmod +x gradlew
+          for attempt in 1 2 3; do
+            if ./gradlew :app:testDebugUnitTest --rerun --stacktrace; then exit 0; fi
+            echo "Test attempt $attempt failed, retrying in 30 s"; sleep 30
+          done
+          exit 1
+
+      - name: Save screenshots and test report to the 'screenshots' branch
+        if: always()
+        run: |
+          mkdir -p /tmp/out/screens /tmp/out/report
+          cp app/build/screens/* /tmp/out/screens/ 2>/dev/null || true
+          cp -r app/build/reports/tests/testDebugUnitTest/. /tmp/out/report/ 2>/dev/null || true
+          cp -r app/build/test-results/testDebugUnitTest/. /tmp/out/report/xml/ 2>/dev/null || true
+          echo "tests: ${{ steps.tests.outcome }} @ ${GITHUB_SHA::7}" > /tmp/out/STATUS.txt
+          git config user.name "iep-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git checkout --orphan screenshots
+          git rm -rfq . || true
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -r /tmp/out/. .
+          git add -A
+          git commit -qm "Screenshots for ${GITHUB_SHA::7}"
+          git push -f origin screenshots

@@ -1,0 +1,14 @@
+.gradle/
+build/
+app/build/
+models/build/
+models/src/main/assets/*.onnx
+local.properties
+.idea/
+*.iml
+.DS_Store
+captures/
+.kotlin/
+*.keystore
+!app/debug.keystore
+*.jks
