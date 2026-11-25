@@ -57,6 +57,7 @@ class ScreenshotTests {
     @Test
     fun screens() {
         val vm = rule.activity.vm
+        rule.runOnUiThread { vm.net.online = true }
         shot("01_home_empty")
         rule.runOnUiThread { vm.setSource(scene(900, 1200, sharp = false)) }
         shot("02_home_photo")
@@ -77,5 +78,22 @@ class ScreenshotTests {
         shot("08_home_unlimited")
         rule.runOnUiThread { vm.showInfo = true }
         shot("09_info")
+        rule.runOnUiThread { vm.showInfo = false; vm.net.online = false }
+        shot("10_home_offline")
+        rule.runOnUiThread { vm.showOffline = true }
+        shot("11_offline_dialog")
+    }
+
+    private fun res(name: String): Bitmap =
+        android.graphics.BitmapFactory.decodeStream(javaClass.classLoader!!.getResourceAsStream(name))
+
+    /** Real AI before/after (cat photo, CC0) inside the app UI, for the Play Store screenshots. */
+    @Test
+    fun storeScreens() {
+        val vm = rule.activity.vm
+        rule.runOnUiThread { vm.net.online = true; vm.setSource(res("store_before.jpg")) }
+        shot("store_home_photo")
+        rule.runOnUiThread { vm.setResult(res("store_after.jpg")) }
+        shot("store_result")
     }
 }

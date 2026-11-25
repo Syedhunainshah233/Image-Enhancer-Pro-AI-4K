@@ -18,6 +18,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -185,5 +187,41 @@ fun StopDialog(vm: AppViewModel) {
         GradientButton("Keep enhancing", onClick = { vm.showStop = false })
         Spacer(Modifier.height(4.dp))
         TextLink("Stop") { vm.cancel() }
+    }
+}
+
+/** No internet: enhancing waits until the phone is online. Refresh checks again. */
+@Composable
+fun OfflineDialog(vm: AppViewModel) {
+    var checking by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(vm.net.online) {
+        if (vm.net.online) {
+            vm.showOffline = false
+            vm.message = "Connected! Tap Enhance to continue."
+        }
+    }
+    androidx.compose.runtime.LaunchedEffect(checking) {
+        if (checking) {
+            kotlinx.coroutines.delay(900)
+            if (!vm.net.refresh()) vm.message = "Still offline. Turn on Wi-Fi or mobile data."
+            checking = false
+        }
+    }
+    DialogCard({ vm.showOffline = false }) {
+        Box(
+            Modifier.size(84.dp).clip(CircleShape).background(C.red.copy(alpha = 0.15f)),
+            contentAlignment = Alignment.Center,
+        ) { Text("📡", fontSize = 40.sp) }
+        Spacer(Modifier.height(12.dp))
+        Text("You're offline", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "Connect to the internet to enhance your photo. Turn on Wi-Fi or mobile data, then tap Refresh.",
+            color = C.muted, textAlign = TextAlign.Center, fontSize = 14.sp,
+        )
+        Spacer(Modifier.height(18.dp))
+        GradientButton(if (checking) "Checking…" else "↻  Refresh", enabled = !checking, onClick = { checking = true })
+        Spacer(Modifier.height(4.dp))
+        TextLink("Close") { vm.showOffline = false }
     }
 }

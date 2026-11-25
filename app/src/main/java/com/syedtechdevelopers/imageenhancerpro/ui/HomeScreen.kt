@@ -168,7 +168,8 @@ fun HomeScreen(vm: AppViewModel, onPick: () -> Unit, onEnhance: () -> Unit, onUn
                 }
             }
         }
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(10.dp))
+        if (!vm.net.online) OfflineStrip { vm.net.refresh() }
         GradientButton(
             if (vm.sourcePreview == null) "📷  Upload Photo" else "✨  Enhance",
             Modifier.padding(horizontal = 16.dp),
@@ -225,5 +226,33 @@ private fun UploadContent() {
         Text("Tap to upload photo", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
         Spacer(Modifier.height(6.dp))
         UploadHint()
+    }
+}
+
+/** Red strip above the Enhance button while there is no internet. */
+@Composable
+private fun OfflineStrip(onRefresh: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 10.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(C.red.copy(alpha = 0.14f))
+            .border(1.dp, C.red.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("📡", fontSize = 18.sp)
+        Spacer(Modifier.width(8.dp))
+        Column(Modifier.weight(1f)) {
+            Text("No internet connection", color = C.text, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text("Connect to enhance photos", color = C.muted, fontSize = 12.sp)
+        }
+        Text(
+            "Refresh", color = C.text, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+            modifier = Modifier.clip(RoundedCornerShape(50)).background(C.red.copy(alpha = 0.6f)).clickable(onClick = onRefresh)
+                .padding(horizontal = 14.dp, vertical = 7.dp),
+        )
     }
 }

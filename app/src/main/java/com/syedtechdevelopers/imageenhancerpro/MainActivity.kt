@@ -42,6 +42,7 @@ import com.syedtechdevelopers.imageenhancerpro.ui.AppTheme
 import com.syedtechdevelopers.imageenhancerpro.ui.C
 import com.syedtechdevelopers.imageenhancerpro.ui.HomeScreen
 import com.syedtechdevelopers.imageenhancerpro.ui.InfoDialog
+import com.syedtechdevelopers.imageenhancerpro.ui.OfflineDialog
 import com.syedtechdevelopers.imageenhancerpro.ui.ResultScreen
 import com.syedtechdevelopers.imageenhancerpro.ui.SaveDialog
 import com.syedtechdevelopers.imageenhancerpro.ui.StopDialog
@@ -117,7 +118,9 @@ fun App(vm: AppViewModel) {
     }
 
     val enhance = {
-        if (!vm.limits.canEnhance) {
+        if (!vm.net.refresh()) {
+            vm.showOffline = true // no internet → no enhance
+        } else if (!vm.limits.canEnhance) {
             vm.showUnlock = true
         } else {
             // The enhance starts only after the rewarded ad is watched to the end.
@@ -131,7 +134,11 @@ fun App(vm: AppViewModel) {
         }
     }
 
-    val watchUnlockAd = {
+    val watchUnlockAd: () -> Unit = watchUnlockAd@{
+        if (!vm.net.refresh()) {
+            vm.showOffline = true
+            return@watchUnlockAd
+        }
         vm.waitingForAd = true
         Ads.showRewarded(
             activity,
@@ -155,6 +162,7 @@ fun App(vm: AppViewModel) {
     }
 
     if (vm.showStop && vm.screen == Screen.Working) StopDialog(vm)
+    if (vm.showOffline) OfflineDialog(vm)
     if (vm.showUnlock) UnlockDialog(vm, onWatch = watchUnlockAd)
     if (vm.showSave) {
         SaveDialog(

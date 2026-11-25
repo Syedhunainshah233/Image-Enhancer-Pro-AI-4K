@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.0.3
+- Enhance needs internet: "You're offline" screen with Refresh, and a red strip on the home screen
+
 ## 1.0.2
 - Whole photo enhanced: body, clothes and background now get sharp (Real-ESRGAN x2plus), not only faces
 - Upload and loading screens: banner + native ad on top, native ad + banner at the bottom

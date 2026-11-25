@@ -16,6 +16,7 @@ import com.syedtechdevelopers.imageenhancerpro.ai.ImageIO
 import com.syedtechdevelopers.imageenhancerpro.ai.MissingModelsException
 import com.syedtechdevelopers.imageenhancerpro.ai.Stage
 import com.syedtechdevelopers.imageenhancerpro.data.Limits
+import com.syedtechdevelopers.imageenhancerpro.data.Net
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -26,6 +27,7 @@ enum class Screen { Home, Working, Result }
 
 class AppViewModel(app: Application) : AndroidViewModel(app) {
     val limits = Limits(app)
+    val net = Net(app)
     private val enhancer by lazy { Enhancer(app) }
 
     var screen by mutableStateOf(Screen.Home)
@@ -46,6 +48,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var showSave by mutableStateOf(false)
     var showInfo by mutableStateOf(false)
     var showStop by mutableStateOf(false)
+    var showOffline by mutableStateOf(false)
     var waitingForAd by mutableStateOf(false)
     var message by mutableStateOf<String?>(null)
     var saving by mutableStateOf(false); private set
@@ -151,6 +154,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
             saving = false
         }
+    }
+
+    override fun onCleared() {
+        net.close()
     }
 
     companion object {
