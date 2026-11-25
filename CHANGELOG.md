@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1
+- Fixed faces: face points are ordered from the face itself, so faces come out sharp (no smear)
+- Sideways photos: faces found at 90°/270° too
+- Loading screen: "Do not close the app" warning, screen stays on, Stop asks first
+- No app open ad on screen rotation or dark-mode switch
+
 ## 1.0.0
 - Play Store build signed with the upload key (real ads)
 - First version: one-tap AI enhance to 4K, before/after slider, save 4K/HD, share

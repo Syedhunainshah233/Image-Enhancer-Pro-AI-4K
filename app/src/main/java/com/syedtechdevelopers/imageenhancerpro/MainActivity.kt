@@ -70,8 +70,19 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        Ads.onAppStart(this, coldStart)
+        // App open ad on launch, or when the user really comes back (not on rotation / dark-mode switch).
+        if (coldStart || wentToBackground) Ads.onAppStart(this, coldStart)
         coldStart = false
+        wentToBackground = false
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations) wentToBackground = true
+    }
+
+    companion object {
+        private var wentToBackground = false
     }
 }
 

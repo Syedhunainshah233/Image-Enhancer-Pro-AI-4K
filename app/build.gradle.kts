@@ -12,8 +12,8 @@ android {
         applicationId = "com.syedtechdevelopers.imageenhancerpro"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
         // Crash reports in Play Console with readable native stack traces.
         ndk { debugSymbolLevel = "SYMBOL_TABLE" }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

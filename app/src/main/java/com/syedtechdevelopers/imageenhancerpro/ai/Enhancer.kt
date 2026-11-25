@@ -173,24 +173,37 @@ class Enhancer(private val context: Context) {
                 .setMinFaceSize(0.04f)
                 .build(),
         )
+        val types = intArrayOf(
+            FaceLandmark.LEFT_EYE, FaceLandmark.RIGHT_EYE, FaceLandmark.NOSE_BASE,
+            FaceLandmark.MOUTH_LEFT, FaceLandmark.MOUTH_RIGHT,
+        )
         try {
-            val found = detector.process(InputImage.fromBitmap(det, 0)).await()
-            val types = intArrayOf(
-                FaceLandmark.LEFT_EYE, FaceLandmark.RIGHT_EYE, FaceLandmark.NOSE_BASE,
-                FaceLandmark.MOUTH_LEFT, FaceLandmark.MOUTH_RIGHT,
-            )
-            return found
-                .sortedByDescending { it.boundingBox.width() * it.boundingBox.height() }
-                .mapNotNull { face ->
-                    val raw = FloatArray(10)
-                    for ((i, type) in types.withIndex()) {
-                        val p = face.getLandmark(type)?.position ?: return@mapNotNull null
-                        raw[2 * i] = p.x / s
-                        raw[2 * i + 1] = p.y / s
+            // Upright first; sideways photos are retried turned 90° each way.
+            for (rot in intArrayOf(0, 90, 270)) {
+                val img = if (rot == 0) det else Bitmap.createBitmap(det, 0, 0, det.width, det.height, Matrix().apply { postRotate(rot.toFloat()) }, true)
+                val found = detector.process(InputImage.fromBitmap(img, 0)).await()
+                if (img !== det) img.recycle()
+                val faces = found
+                    .sortedByDescending { it.boundingBox.width() * it.boundingBox.height() }
+                    .mapNotNull { face ->
+                        val raw = FloatArray(10)
+                        for ((i, type) in types.withIndex()) {
+                            val p = face.getLandmark(type)?.position ?: return@mapNotNull null
+                            // back to upright-photo coordinates, then to the full-size photo
+                            val (x, y) = when (rot) {
+                                90 -> p.y to (det.height - 1 - p.x)
+                                270 -> (det.width - 1 - p.y) to p.x
+                                else -> p.x to p.y
+                            }
+                            raw[2 * i] = x / s
+                            raw[2 * i + 1] = y / s
+                        }
+                        ImageMath.orderFacePoints(raw)
                     }
-                    ImageMath.orderFacePoints(raw)
-                }
-                .take(MAX_FACES)
+                    .take(MAX_FACES)
+                if (faces.isNotEmpty()) return faces
+            }
+            return emptyList()
         } finally {
             detector.close()
             if (det !== src) det.recycle()
