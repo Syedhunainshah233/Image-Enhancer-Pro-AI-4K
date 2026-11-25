@@ -1,0 +1,8 @@
+--------- beginning of main
+11-25 12:15:13.869  4100  4393 I DeviceTests: small photo: 165026 ms
+11-25 12:15:14.084  4100  4393 I DeviceTests: face faces found: 1
+11-25 12:16:28.345  4100  4393 I DeviceTests: face 384x384: 74260 ms
+11-25 12:16:28.807  4100  4393 I DeviceTests: face_mirror faces found: 1
+11-25 12:17:40.718  4100  4393 I DeviceTests: face_mirror 384x384: 71911 ms
+11-25 12:17:41.054  4100  4393 I DeviceTests: face_rot90 faces found: 1
+11-25 12:18:53.011  4100  4393 I DeviceTests: face_rot90 384x384: 71957 ms
