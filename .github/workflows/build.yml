@@ -7,7 +7,6 @@ on:
   workflow_dispatch:
 
 env:
-  MODELS_TAG: models-v1
   BUNDLETOOL: https://github.com/google/bundletool/releases/download/1.17.2/bundletool-all-1.17.2.jar
 
 jobs:
@@ -25,12 +24,25 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Get AI models (kept as a GitHub release, too big for git)
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Cache AI models
+        id: models
+        uses: actions/cache@v4
+        with:
+          path: models/src/main/assets
+          key: ai-models-${{ hashFiles('tools/export_models.py') }}
+
+      - uses: actions/setup-python@v5
+        if: steps.models.outputs.cache-hit != 'true'
+        with:
+          python-version: "3.12"
+
+      - name: Make AI models (official weights → ONNX)
+        if: steps.models.outputs.cache-hit != 'true'
         run: |
-          gh release download "$MODELS_TAG" --dir models/src/main/assets --pattern '*.onnx' --pattern 'SHA256SUMS'
-          cd models/src/main/assets && sha256sum -c SHA256SUMS && rm SHA256SUMS && ls -la
+          pip install -q torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -q spandrel onnx onnxruntime onnxscript
+          python tools/export_models.py models/src/main/assets
+          ls -la models/src/main/assets
 
       - name: Build
         env:

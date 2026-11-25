@@ -10,8 +10,8 @@ GFPGAN v1.4 for faces, ML Kit for face detection.
 
 ## Build
 GitHub Actions builds on every push to `main`. Download the APK from the
-[latest release](../../releases/tag/latest). The AI models live in the `models-v1` release
-(too big for git) and are packed into an install-time asset pack during the build.
+[latest release](../../releases/tag/latest). The AI models are made by `tools/export_models.py` from the official weights (too big for git)
+and packed into an install-time asset pack during the build.
 
 Release builds (real ads + Play Store `.aab`) need two repository secrets:
 `IEP_KEYSTORE_BASE64` and `IEP_KEYSTORE_PASSWORD`.
