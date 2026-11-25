@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.syedtechdevelopers.imageenhancerpro.ImageMathTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-11-25T12:10:07" hostname="runnervm0hi8g" time="0.068">
+  <properties/>
+  <testcase name="maskIsSoftAtEdgesAndSolidInside" classname="com.syedtechdevelopers.imageenhancerpro.ImageMathTest" time="0.013"/>
+  <testcase name="passPlanUsesEvenSizesAndEndsNear2k" classname="com.syedtechdevelopers.imageenhancerpro.ImageMathTest" time="0.014"/>
+  <testcase name="facePointsAlwaysGiveUprightCrop" classname="com.syedtechdevelopers.imageenhancerpro.ImageMathTest" time="0.025"/>
+  <testcase name="tilesCoverImageExactlyOnce" classname="com.syedtechdevelopers.imageenhancerpro.ImageMathTest" time="0.013"/>
+  <testcase name="similarityRecoversRotationScaleShift" classname="com.syedtechdevelopers.imageenhancerpro.ImageMathTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
