@@ -117,12 +117,24 @@ def footer(img):
     ImageDraw.Draw(img).text((gx + 22, y + 26), 'AI 4K', font=bold(36), fill=(7, 6, 15))
 
 
+def free_badge(img):
+    """Gold "100% FREE" pill at the top."""
+    f = bold(40); d = ImageDraw.Draw(img)
+    text = '100% FREE'
+    tw = int(d.textlength(text, font=f)); pw, ph = tw + 70, 74
+    g = gradient(pw, ph, [(255, 224, 122), GOLD, (255, 166, 43)])
+    x = (W - pw) // 2; y = 22
+    img.paste(rounded(g, ph // 2), (x, y), rounded(g, ph // 2))
+    ImageDraw.Draw(img).text((x + 35, y + 11), text, font=f, fill=(7, 6, 15))
+
+
 def slide(name, line1, line2, sub, card):
     img = background()
-    text_center(img, 110, line1, bold(86))
-    gradient_text_center(img, 215, line2, bold(96))
-    text_center(img, 352, sub, med(40), fill=(207, 201, 234))
+    text_center(img, 118, line1, bold(84))
+    gradient_text_center(img, 220, line2, bold(94))
+    text_center(img, 356, sub, med(40), fill=(207, 201, 234))
     shadow_paste(img, card, (W - card.width) // 2, 470)
+    free_badge(img)
     footer(img)
     img.convert('RGB').save(f'{OUT}/{name}.png')
 
@@ -141,13 +153,39 @@ if __name__ == '__main__':
     pairs = dict(arg.split('=') for arg in sys.argv[4:])
     L = lambda k: Image.open(pairs[k]).convert('RGB')
     if 'girl_in' in pairs:
-        slide('01_face', 'Blurry Selfie?', 'Crystal Clear!', 'AI restores faces, skin & hair in 1 tap',
-              before_after(L('girl_in'), L('girl_out'), 960, 1300, 0.5, 0.42, float(pairs.get('girl_zoom', 1.0))))
-    slide('02_hero', 'Blurry Photo?', 'Make it 4K', 'One tap. Sharp, clear & detailed.',
+        slide('01_face', 'Blurry Photo?', 'Crystal Clear!', '100% free AI enhancer • 1 tap to 4K',
+              before_after(L('girl_in'), L('girl_out'), 960, 1300, 0.55, 0.42, 1.0, split=0.6))
+    slide('02_hero', 'Old & Blurry?', 'Make it 4K', 'One tap. Sharp, clear & detailed.',
           before_after(L('cat_in'), L('cat_out'), 960, 1300, 0.42, 0.45, 1.25))
     slide('03_detail', 'Sharpen Every', 'Tiny Detail', 'Removes blur, noise & JPEG marks',
           before_after(L('coffee_in'), L('coffee_out'), 960, 1300, 0.5, 0.5, 1.15))
     slide('04_upscale', 'Upscale to', 'Ultra HD 4K', 'Up to 4096 px, same shape as your photo',
-          before_after(L('cat_in'), L('cat_out'), 960, 1300, 0.45, 0.5, 1.0))
+          before_after(L('girl_in'), L('girl_out'), 960, 1300, 0.78, 0.17, 2.4, split=0.5))
     slide('05_app', 'One Tap.', "That's It!", 'Upload  •  Enhance  •  Save in 4K', phone(f'{SHOTS}/store_result.png'))
     slide('06_private', '100% Private', 'On Your Phone', 'Your photos are never uploaded anywhere', phone(f'{SHOTS}/03_working.png'))
+
+
+def feature_graphic(before, after, out):
+    """Play Store feature graphic 1024x500."""
+    global W, H
+    W, H = 1024, 500
+    img = background()
+    card = before_after(before, after, 430, 440, 0.6, 0.35, 1.3, split=0.5)
+    shadow_paste(img, card, 560, 30, blur=30)
+    logo = rounded(Image.open(LOGO).convert('RGB').resize((120, 120), Image.LANCZOS), 28)
+    img.alpha_composite(logo, (50, 50))
+    d = ImageDraw.Draw(img)
+    d.text((50, 190), 'Image Enhancer', font=bold(56), fill='white')
+    m = Image.new('L', (480, 80), 0); ImageDraw.Draw(m).text((0, 0), 'Pro  AI 4K', font=bold(56), fill=255)
+    img.paste(gradient(480, 80, [PINK, PURPLE, BLUE]), (50, 255), m)
+    d.text((52, 340), 'Blurry photo to sharp 4K in 1 tap', font=med(26), fill=(207, 201, 234))
+    g = gradient(230, 62, [(255, 224, 122), GOLD, (255, 166, 43)])
+    img.paste(rounded(g, 31), (50, 395), rounded(g, 31))
+    ImageDraw.Draw(img).text((75, 404), '100% FREE', font=bold(34), fill=(7, 6, 15))
+    img.convert('RGB').save(out)
+    W, H = 1080, 1920
+
+
+if __name__ == '__main__' and 'girl_in' in dict(a.split('=') for a in sys.argv[4:]):
+    p = dict(a.split('=') for a in sys.argv[4:])
+    feature_graphic(Image.open(p['girl_in']).convert('RGB'), Image.open(p['girl_out']).convert('RGB'), f'{OUT}/../feature_graphic_1024x500.png')
