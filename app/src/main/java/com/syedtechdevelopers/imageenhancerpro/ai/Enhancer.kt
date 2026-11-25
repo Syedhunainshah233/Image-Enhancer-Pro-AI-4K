@@ -35,7 +35,8 @@ class MissingModelsException : Exception("AI files are missing")
 /**
  * On-device enhancer:
  *  1. ML Kit finds faces (5 points each).
- *  2. Real-ESRGAN (general x4v3) removes blur/noise and upscales x4, in tiles (1 or 2 passes) → long side 4096.
+ *  2. Real-ESRGAN x2plus sharpens the whole photo (body, clothes, background) and doubles its size,
+ *     in tiles (1–3 passes), then it is resized to a 4096 px long side.
  *  3. GFPGAN v1.4 rebuilds every face at 512×512 and it is blended back with a soft mask.
  * Everything runs on the phone; the photo never leaves the device.
  */
@@ -91,10 +92,9 @@ class Enhancer(private val context: Context) {
         var cur = src
         val esr = openSession(ESRGAN)
         try {
-            repeat(ImageMath.passes(src.width, src.height)) {
-                val (iw, ih) = ImageMath.passInput(cur.width, cur.height)
+            for ((iw, ih) in ImageMath.passPlan(src.width, src.height)) {
                 val input = if (iw != cur.width || ih != cur.height) Bitmap.createScaledBitmap(cur, iw, ih, true) else cur
-                val out = Bitmap.createBitmap(iw * 4, ih * 4, Bitmap.Config.ARGB_8888)
+                val out = Bitmap.createBitmap(iw * S, ih * S, Bitmap.Config.ARGB_8888)
                 for (t in ImageMath.tiles(iw, ih)) {
                     coroutineContext.ensureActive()
                     runTile(esr, input, out, t)
@@ -143,12 +143,12 @@ class Enhancer(private val context: Context) {
         OnnxTensor.createTensor(env, fb, longArrayOf(1, 3, th.toLong(), tw.toLong())).use { tensor ->
             session.run(mapOf("input" to tensor)).use { res ->
                 val o = (res.get(0) as OnnxTensor).floatBuffer
-                val ow = tw * 4
-                val op = ow * th * 4
-                val ox = (t.x - t.x0) * 4
-                val oy = (t.y - t.y0) * 4
-                val w4 = t.w * 4
-                val h4 = t.h * 4
+                val ow = tw * S
+                val op = ow * th * S
+                val ox = (t.x - t.x0) * S
+                val oy = (t.y - t.y0) * S
+                val w4 = t.w * S
+                val h4 = t.h * S
                 val outPx = IntArray(w4 * h4)
                 for (yy in 0 until h4) {
                     val row = (oy + yy) * ow + ox
@@ -157,7 +157,7 @@ class Enhancer(private val context: Context) {
                         outPx[yy * w4 + xx] = argb(o.get(idx), o.get(op + idx), o.get(2 * op + idx), 255)
                     }
                 }
-                out.setPixels(outPx, 0, w4, t.x * 4, t.y * 4, w4, h4)
+                out.setPixels(outPx, 0, w4, t.x * S, t.y * S, w4, h4)
             }
         }
     }
@@ -269,7 +269,8 @@ class Enhancer(private val context: Context) {
     }
 
     companion object {
-        const val ESRGAN = "esrgan_x4v3.onnx"
+        const val ESRGAN = "esrgan_x2plus.onnx"
+        private const val S = ImageMath.SCALE
         const val GFPGAN = "gfpgan_v14.onnx"
         const val MAX_FACES = 8
 

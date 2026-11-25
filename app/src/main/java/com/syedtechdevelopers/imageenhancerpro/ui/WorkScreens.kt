@@ -52,7 +52,11 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.syedtechdevelopers.imageenhancerpro.AppViewModel
+import com.syedtechdevelopers.imageenhancerpro.ads.BannerAd
 import com.syedtechdevelopers.imageenhancerpro.ads.NativeAdCard
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import com.syedtechdevelopers.imageenhancerpro.ai.Stage
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -78,14 +82,22 @@ fun WorkingScreen(vm: AppViewModel) {
     val glow by spin.animateFloat(0.35f, 0.9f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "glow")
 
     Column(Modifier.fillMaxSize().statusBarsPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Spacer(Modifier.height(10.dp))
+        // Top ads section: banner + native box
+        Spacer(Modifier.height(6.dp))
+        BannerAd()
+        Spacer(Modifier.height(6.dp))
         NativeAdCard(Modifier.padding(horizontal = 16.dp), slot = "work")
+        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
         Column(
-            Modifier.weight(1f).fillMaxWidth().padding(horizontal = 24.dp),
+            Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .heightIn(min = maxHeight)
+                .padding(horizontal = 24.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Box(Modifier.size(170.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(150.dp), contentAlignment = Alignment.Center) {
                 // Spinner ring
                 Canvas(Modifier.fillMaxSize().rotate(angle)) {
                     drawArc(
@@ -95,12 +107,12 @@ fun WorkingScreen(vm: AppViewModel) {
                     )
                 }
                 // Progress ring
-                Canvas(Modifier.size(132.dp)) {
+                Canvas(Modifier.size(116.dp)) {
                     drawArc(C.card2, -90f, 360f, false, style = Stroke(8.dp.toPx()))
                     drawArc(C.gold, -90f, 360f * p, false, style = Stroke(8.dp.toPx(), cap = StrokeCap.Round))
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("${(p * 100).roundToInt()}%", fontSize = 36.sp, fontWeight = FontWeight.Black)
+                    Text("${(p * 100).roundToInt()}%", fontSize = 32.sp, fontWeight = FontWeight.Black)
                     Text("✨", fontSize = 18.sp, modifier = Modifier.padding(top = 2.dp), color = C.gold.copy(alpha = glow))
                 }
             }
@@ -138,6 +150,10 @@ fun WorkingScreen(vm: AppViewModel) {
                 modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { vm.showStop = true }.padding(horizontal = 18.dp, vertical = 8.dp),
             )
         }
+        }
+        // Bottom ads section: native box (+ the banner under every screen)
+        NativeAdCard(Modifier.padding(horizontal = 16.dp), slot = "work_bottom")
+        Spacer(Modifier.height(6.dp))
     }
 }
 

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="bg">#FF07060F</color>
-    <color name="icon_bg">#FF0B0820</color>
+    <color name="icon_bg">#FF05040A</color>
     <style name="Theme.IEP" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/bg</item>
         <item name="android:statusBarColor">@android:color/transparent</item>

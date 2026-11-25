@@ -9,8 +9,11 @@ object ImageMath {
     /** Final image size: long side 4096 px ("4K"), same shape as the user's photo. */
     const val TARGET_LONG = 4096
 
-    /** Biggest input of one AI pass (x4 → 4096). */
+    /** Biggest input of one AI pass (x2 → 2048, then smoothly resized to 4096). */
     const val WORK_LONG = 1024
+
+    /** Real-ESRGAN x2plus doubles the size each pass. */
+    const val SCALE = 2
 
     const val TILE = 192
     const val PAD = 16
@@ -27,11 +30,24 @@ object ImageMath {
         return max(1, (w * s).roundToInt()) to max(1, (h * s).roundToInt())
     }
 
-    /** Small photos get two x4 passes (e.g. 240 → 960 → 3840), bigger ones one pass. */
-    fun passes(w: Int, h: Int): Int = if (max(w, h) * 4 < 2048) 2 else 1
+    private fun even(v: Int) = max(2, v - v % 2)
 
-    /** Size that goes into a pass: capped at 1024 on the long side. */
-    fun passInput(w: Int, h: Int): Pair<Int, Int> = if (max(w, h) > WORK_LONG) scaledSize(w, h, WORK_LONG) else w to h
+    /**
+     * Input size of each x2 pass (even sizes; the model needs them). Each pass takes at most 1024 px;
+     * small photos get more passes (240 → 480 → 960 → 1920), big ones one pass (→ 2048).
+     */
+    fun passPlan(w: Int, h: Int): List<Pair<Int, Int>> {
+        val out = ArrayList<Pair<Int, Int>>()
+        var cw = w; var ch = h
+        while (true) {
+            val (sw, sh) = if (max(cw, ch) > WORK_LONG) scaledSize(cw, ch, WORK_LONG) else cw to ch
+            val iw = even(sw); val ih = even(sh)
+            out += iw to ih
+            cw = iw * SCALE; ch = ih * SCALE
+            if (max(cw, ch) >= 1536 || out.size >= 4) break
+        }
+        return out
+    }
 
     data class Tile(val x: Int, val y: Int, val w: Int, val h: Int, val x0: Int, val y0: Int, val x1: Int, val y1: Int)
 
@@ -53,15 +69,7 @@ object ImageMath {
     }
 
     /** Total tiles over all passes (for the progress bar). */
-    fun totalTiles(w: Int, h: Int): Int {
-        var cw = w; var ch = h; var n = 0
-        repeat(passes(w, h)) {
-            val (iw, ih) = passInput(cw, ch)
-            n += tiles(iw, ih).size
-            cw = iw * 4; ch = ih * 4
-        }
-        return n
-    }
+    fun totalTiles(w: Int, h: Int): Int = passPlan(w, h).sumOf { (iw, ih) -> tiles(iw, ih).size }
 
     /**
      * Least-squares similarity transform (rotation + uniform scale + shift) taking the 5 face points

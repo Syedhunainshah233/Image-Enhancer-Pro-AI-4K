@@ -1,7 +1,7 @@
 # Image Enhancer Pro – AI 4K
 
 Android app by **SyedTechdevelopers**: one tap turns a blurry, old or low-quality photo into a sharp 4K image.
-Everything runs on the phone (no server): Real-ESRGAN (general x4v3) for blur/noise and 4x upscaling,
+Everything runs on the phone (no server): Real-ESRGAN x2plus for sharpening the whole photo and upscaling,
 GFPGAN v1.4 for faces, ML Kit for face detection.
 
 - 5 free enhances every 24 hours, 5 rewarded ads = 1 hour unlimited

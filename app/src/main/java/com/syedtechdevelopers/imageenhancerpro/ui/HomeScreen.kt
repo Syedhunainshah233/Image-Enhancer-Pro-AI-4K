@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.syedtechdevelopers.imageenhancerpro.AppViewModel
 import com.syedtechdevelopers.imageenhancerpro.R
+import com.syedtechdevelopers.imageenhancerpro.ads.BannerAd
 import com.syedtechdevelopers.imageenhancerpro.ads.NativeAdCard
 import com.syedtechdevelopers.imageenhancerpro.data.Limits
 
@@ -116,11 +117,13 @@ fun StatusRow(vm: AppViewModel, onUnlock: () -> Unit) {
 fun HomeScreen(vm: AppViewModel, onPick: () -> Unit, onEnhance: () -> Unit, onUnlock: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
         TopBar(vm)
-        // Top ads section
+        // Top ads section: banner + native box
+        BannerAd()
+        Spacer(Modifier.height(6.dp))
         NativeAdCard(Modifier.padding(horizontal = 16.dp), slot = "home")
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(8.dp))
         StatusRow(vm, onUnlock)
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
         Box(
             Modifier
                 .weight(1f)
@@ -171,7 +174,10 @@ fun HomeScreen(vm: AppViewModel, onPick: () -> Unit, onEnhance: () -> Unit, onUn
             Modifier.padding(horizontal = 16.dp),
             onClick = { if (vm.sourcePreview == null) onPick() else onEnhance() },
         )
-        Spacer(Modifier.height(12.dp))
+        // Bottom ads section: native box (+ the banner under every screen), kept apart from the button
+        Spacer(Modifier.height(14.dp))
+        NativeAdCard(Modifier.padding(horizontal = 16.dp), slot = "home_bottom")
+        Spacer(Modifier.height(6.dp))
     }
 }
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.2
+- Whole photo enhanced: body, clothes and background now get sharp (Real-ESRGAN x2plus), not only faces
+- Upload and loading screens: banner + native ad on top, native ad + banner at the bottom
+- App icon shows the full logo (no cut corners)
+
 ## 1.0.1
 - Fixed faces: face points are ordered from the face itself, so faces come out sharp (no smear)
 - Sideways photos: faces found at 90°/270° too

@@ -7,12 +7,17 @@ import org.junit.Test
 
 class ImageMathTest {
     @Test
-    fun smallPhotoGetsTwoPassesTo4k() {
-        assertEquals(2, ImageMath.passes(240, 240))
-        assertEquals(1, ImageMath.passes(800, 600))
-        assertEquals(1, ImageMath.passes(2048, 1536))
+    fun passPlanUsesEvenSizesAndEndsNear2k() {
+        assertEquals(listOf(240 to 240, 480 to 480, 960 to 960), ImageMath.passPlan(240, 240))
+        assertEquals(listOf(1024 to 768), ImageMath.passPlan(2048, 1536))
+        assertEquals(listOf(600 to 400, 1024 to 682), ImageMath.passPlan(600, 400))
+        assertEquals(listOf(1024 to 76), ImageMath.passPlan(2048, 151))
+        for ((w, h) in listOf(7 to 5, 333 to 1999, 1001 to 3, 2048 to 2048)) {
+            val plan = ImageMath.passPlan(w, h)
+            assertTrue(plan.all { (a, b) -> a % 2 == 0 && b % 2 == 0 && maxOf(a, b) <= 1024 })
+            assertTrue(plan.size <= 4)
+        }
         assertEquals(4096 to 3072, ImageMath.scaledSize(2048, 1536, 4096))
-        assertEquals(1024 to 768, ImageMath.passInput(2048, 1536))
     }
 
     @Test

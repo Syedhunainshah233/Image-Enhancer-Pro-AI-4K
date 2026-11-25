@@ -1,7 +1,7 @@
 """Downloads the official model weights and converts them to the ONNX files the app uses.
 
-Run by GitHub Actions (cached). Output: models/src/main/assets/{esrgan_x4v3,gfpgan_v14}.onnx
-  - Real-ESRGAN general x4v3 (BSD-3-Clause)   github.com/xinntao/Real-ESRGAN
+Run by GitHub Actions (cached). Output: models/src/main/assets/{esrgan_x2plus,gfpgan_v14}.onnx
+  - Real-ESRGAN x2plus (BSD-3-Clause)         github.com/xinntao/Real-ESRGAN
   - GFPGAN v1.4 (Apache-2.0)                  github.com/TencentARC/GFPGAN
 Big weights are stored as fp16 with a Cast to fp32 in front (ONNX Runtime folds it at load),
 so the files are half the size while the maths stays fp32.
@@ -13,7 +13,7 @@ from onnx import helper, numpy_helper, TensorProto
 OUT = sys.argv[1] if len(sys.argv) > 1 else 'models/src/main/assets'
 TMP = os.environ.get('RUNNER_TEMP', '/tmp')
 URLS = {
-    'x4v3.pth': 'https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth',
+    'x2plus.pth': 'https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth',
     'gfp.pth': 'https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.4.pth',
 }
 os.makedirs(OUT, exist_ok=True)
@@ -64,7 +64,13 @@ def export(module, example, name, dynamic):
 
 
 torch.manual_seed(0)
-esr = spandrel.ModelLoader().load_from_file(os.path.join(TMP, 'x4v3.pth')).model.eval()
-export(E(esr), torch.rand(1, 3, 64, 64), 'esrgan_x4v3.onnx', True)
+esr = spandrel.ModelLoader().load_from_file(os.path.join(TMP, 'x2plus.pth')).model.eval()
+export(E(esr), torch.rand(1, 3, 64, 64), 'esrgan_x2plus.onnx', True)
+# Dynamic size check (tiles of other even sizes)
+x = torch.rand(1, 3, 96, 160)
+with torch.no_grad(): ref = E(esr)(x).numpy()
+got = ort.InferenceSession(os.path.join(OUT, 'esrgan_x2plus.onnx')).run(None, {'input': x.numpy()})[0]
+assert got.shape == (1, 3, 192, 320), got.shape
+assert float(np.abs(ref - got).mean()) < 0.01
 gfp = spandrel.ModelLoader().load_from_file(os.path.join(TMP, 'gfp.pth')).model.eval()
 export(G(gfp), torch.rand(1, 3, 512, 512), 'gfpgan_v14.onnx', False)
