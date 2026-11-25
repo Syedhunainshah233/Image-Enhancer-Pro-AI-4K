@@ -482,22 +482,26 @@ private object NativeCache {
     private const val MAX_AGE_MS = 30 * 60 * 1000L
     private val ads = HashMap<String, Pair<NativeAd, Long>>()
     private val waiting = HashMap<String, MutableList<(NativeAd) -> Unit>>()
+    private val failed = HashMap<String, MutableList<() -> Unit>>()
 
     fun get(slot: String): NativeAd? = ads[slot]?.takeIf { System.currentTimeMillis() - it.second < MAX_AGE_MS }?.first
 
-    fun load(context: Context, slot: String, onLoaded: (NativeAd) -> Unit) {
+    fun load(context: Context, slot: String, onLoaded: (NativeAd) -> Unit, onFailed: () -> Unit = {}) {
         get(slot)?.let { onLoaded(it); return }
         val list = waiting.getOrPut(slot) { mutableListOf() }
         list += onLoaded
+        failed.getOrPut(slot) { mutableListOf() } += onFailed
         if (list.size > 1) return // a request for this slot is already running
         AdLoader.Builder(context, BuildConfig.AD_NATIVE)
             .forNativeAd { ad ->
                 ads.put(slot, ad to System.currentTimeMillis())?.first?.destroy()
+                failed.remove(slot)
                 waiting.remove(slot)?.forEach { it(ad) }
             }
             .withAdListener(object : AdListener() {
                 override fun onAdFailedToLoad(error: LoadAdError) {
                     waiting.remove(slot)
+                    failed.remove(slot)?.forEach { it() }
                 }
             })
             .withNativeAdOptions(NativeAdOptions.Builder().build())
@@ -511,12 +515,23 @@ fun NativeAdCard(modifier: Modifier = Modifier, slot: String = "main") {
     if (!Ads.ready) return
     val ctx = LocalContext.current
     var ad by remember(slot) { mutableStateOf(NativeCache.get(slot)) }
+    var noNative by remember(slot) { mutableStateOf(false) }
     DisposableEffect(slot) {
         var active = true
-        if (ad == null) NativeCache.load(ctx.applicationContext, slot) { if (active) ad = it }
-        onDispose { active = false }
+        if (ad == null) {
+            NativeCache.load(ctx.applicationContext, slot, { if (active) ad = it }, { if (active) noNative = true })
+        }
+        // Still nothing after a few seconds: show a banner here instead, so this ad space is never empty.
+        val main = android.os.Handler(android.os.Looper.getMainLooper())
+        val fallback = Runnable { if (active && ad == null) noNative = true }
+        main.postDelayed(fallback, 4_000)
+        onDispose { active = false; main.removeCallbacks(fallback) }
     }
-    val current = ad ?: return
+    val current = ad
+    if (current == null) {
+        if (noNative) BannerAd(modifier)
+        return
+    }
     AndroidView(
         modifier = modifier.fillMaxWidth(),
         factory = { c -> buildNativeView(c) },
