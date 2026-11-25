@@ -45,6 +45,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var showUnlock by mutableStateOf(false)
     var showSave by mutableStateOf(false)
     var showInfo by mutableStateOf(false)
+    var showStop by mutableStateOf(false)
     var waitingForAd by mutableStateOf(false)
     var message by mutableStateOf<String?>(null)
     var saving by mutableStateOf(false); private set
@@ -106,6 +107,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         stage = s
                     }
                 }
+                showStop = false
                 setResult(out)
                 progress = 1f
             } catch (e: CancellationException) {
@@ -132,6 +134,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun cancel() {
+        showStop = false
         job?.cancel()
         screen = Screen.Home
     }

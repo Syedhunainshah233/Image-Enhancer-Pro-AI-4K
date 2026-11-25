@@ -44,6 +44,7 @@ import com.syedtechdevelopers.imageenhancerpro.ui.HomeScreen
 import com.syedtechdevelopers.imageenhancerpro.ui.InfoDialog
 import com.syedtechdevelopers.imageenhancerpro.ui.ResultScreen
 import com.syedtechdevelopers.imageenhancerpro.ui.SaveDialog
+import com.syedtechdevelopers.imageenhancerpro.ui.StopDialog
 import com.syedtechdevelopers.imageenhancerpro.ui.UnlockDialog
 import com.syedtechdevelopers.imageenhancerpro.ui.WorkingScreen
 import com.syedtechdevelopers.imageenhancerpro.ui.findActivity
@@ -139,9 +140,10 @@ fun App(vm: AppViewModel) {
     }
 
     BackHandler(enabled = vm.screen != Screen.Home) {
-        if (vm.screen == Screen.Working) vm.cancel() else Ads.showInterstitial(activity) { vm.screen = Screen.Home }
+        if (vm.screen == Screen.Working) vm.showStop = true else Ads.showInterstitial(activity) { vm.screen = Screen.Home }
     }
 
+    if (vm.showStop && vm.screen == Screen.Working) StopDialog(vm)
     if (vm.showUnlock) UnlockDialog(vm, onWatch = watchUnlockAd)
     if (vm.showSave) {
         SaveDialog(

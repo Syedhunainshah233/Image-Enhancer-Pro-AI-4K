@@ -62,6 +62,9 @@ class ScreenshotTests {
         shot("02_home_photo")
         rule.runOnUiThread { vm.progress = 0.46f; vm.stage = Stage.Upscale; vm.screen = Screen.Working }
         shot("03_working")
+        rule.runOnUiThread { vm.showStop = true }
+        shot("03b_stop_dialog")
+        rule.runOnUiThread { vm.showStop = false }
         rule.runOnUiThread { vm.setResult(scene(3072, 4096, sharp = true)) }
         shot("04_result")
         rule.runOnUiThread { vm.showSave = true }

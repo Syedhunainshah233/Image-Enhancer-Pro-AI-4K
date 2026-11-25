@@ -9,6 +9,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -66,6 +67,11 @@ private fun Stage.label() = when (this) {
 
 @Composable
 fun WorkingScreen(vm: AppViewModel) {
+    val view = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        view.keepScreenOn = true // screen stays awake until the photo is ready
+        onDispose { view.keepScreenOn = false }
+    }
     val p by animateFloatAsState(vm.progress, tween(400), label = "progress")
     val spin = rememberInfiniteTransition(label = "spin")
     val angle by spin.animateFloat(0f, 360f, infiniteRepeatable(tween(1200, easing = LinearEasing)), label = "angle")
@@ -79,7 +85,7 @@ fun WorkingScreen(vm: AppViewModel) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Box(Modifier.size(190.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(170.dp), contentAlignment = Alignment.Center) {
                 // Spinner ring
                 Canvas(Modifier.fillMaxSize().rotate(angle)) {
                     drawArc(
@@ -89,16 +95,16 @@ fun WorkingScreen(vm: AppViewModel) {
                     )
                 }
                 // Progress ring
-                Canvas(Modifier.size(150.dp)) {
+                Canvas(Modifier.size(132.dp)) {
                     drawArc(C.card2, -90f, 360f, false, style = Stroke(8.dp.toPx()))
                     drawArc(C.gold, -90f, 360f * p, false, style = Stroke(8.dp.toPx(), cap = StrokeCap.Round))
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("${(p * 100).roundToInt()}%", fontSize = 40.sp, fontWeight = FontWeight.Black)
+                    Text("${(p * 100).roundToInt()}%", fontSize = 36.sp, fontWeight = FontWeight.Black)
                     Text("✨", fontSize = 18.sp, modifier = Modifier.padding(top = 2.dp), color = C.gold.copy(alpha = glow))
                 }
             }
-            Spacer(Modifier.height(26.dp))
+            Spacer(Modifier.height(20.dp))
             Text("Enhancing your photo", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
             Spacer(Modifier.height(6.dp))
             Text(vm.stage.label(), fontSize = 15.sp, color = C.muted, textAlign = TextAlign.Center)
@@ -107,12 +113,29 @@ fun WorkingScreen(vm: AppViewModel) {
             Box(Modifier.fillMaxWidth().height(12.dp).clip(RoundedCornerShape(50)).background(C.card2)) {
                 Box(Modifier.fillMaxHeight().fillMaxWidth(p.coerceIn(0.02f, 1f)).clip(RoundedCornerShape(50)).background(C.grad))
             }
+            Spacer(Modifier.height(16.dp))
+            // Warning: leaving the screen can stop the AI.
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(C.gold.copy(alpha = 0.12f))
+                    .border(1.dp, C.gold.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text("⚠️  Do not close the app", color = C.gold, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
+                Text(
+                    "Stay on this screen until your photo is ready. Leaving may stop the enhancement.",
+                    color = C.text, fontSize = 13.sp, textAlign = TextAlign.Center,
+                )
+            }
             Spacer(Modifier.height(10.dp))
-            Text("Please keep the app open • 100% on your phone, private", fontSize = 12.sp, color = C.muted, textAlign = TextAlign.Center)
-            Spacer(Modifier.height(18.dp))
+            Text("🔒 100% on your phone • private", fontSize = 12.sp, color = C.muted, textAlign = TextAlign.Center)
+            Spacer(Modifier.height(6.dp))
             Text(
                 "Cancel", color = C.muted, fontSize = 15.sp, fontWeight = FontWeight.Bold,
-                modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { vm.cancel() }.padding(horizontal = 18.dp, vertical = 8.dp),
+                modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { vm.showStop = true }.padding(horizontal = 18.dp, vertical = 8.dp),
             )
         }
     }

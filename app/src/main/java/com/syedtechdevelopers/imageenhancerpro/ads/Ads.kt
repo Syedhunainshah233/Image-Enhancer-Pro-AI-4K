@@ -236,21 +236,24 @@ object Ads {
      */
     fun gateRewarded(activity: Activity?, onEarned: () -> Unit, onNotEarned: () -> Unit, onUnavailable: () -> Unit) {
         val main = android.os.Handler(android.os.Looper.getMainLooper())
-        var settled = false
+        var done = false // exactly one of the three callbacks runs
+        var showing = false
         var earned = false
         val timeout = Runnable {
-            if (!settled) { settled = true; onUnavailable() }
+            if (!done && !showing) { done = true; onUnavailable() }
         }
         main.postDelayed(timeout, GATE_WAIT_MS)
         showRewardedWhen(
             activity,
-            canShow = { if (settled) false else { settled = true; main.removeCallbacks(timeout); true } },
+            canShow = { if (done) false else { showing = true; main.removeCallbacks(timeout); true } },
             onReward = { earned = true },
             onFailed = {
                 main.removeCallbacks(timeout)
-                if (!settled) { settled = true; onUnavailable() }
+                if (!done) { done = true; onUnavailable() }
             },
-            onClosed = { if (earned) onEarned() else onNotEarned() },
+            onClosed = {
+                if (!done) { done = true; if (earned) onEarned() else onNotEarned() }
+            },
         )
     }
 

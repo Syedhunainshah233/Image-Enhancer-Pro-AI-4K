@@ -154,3 +154,91 @@ jobs:
           git add -A
           git commit -qm "Screenshots for ${GITHUB_SHA::7}"
           git push -f origin screenshots
+
+  device-test:
+    # Real Android (emulator) with the real AI models: enhance, faces, save, screens with test ads.
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Cache AI models
+        id: models
+        uses: actions/cache@v4
+        with:
+          path: models/src/main/assets
+          key: ai-models-${{ hashFiles('tools/export_models.py') }}
+
+      - uses: actions/setup-python@v5
+        if: steps.models.outputs.cache-hit != 'true'
+        with:
+          python-version: "3.12"
+
+      - name: Make AI models
+        if: steps.models.outputs.cache-hit != 'true'
+        run: |
+          pip install -q torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          pip install -q spandrel onnx onnxruntime onnxscript
+          python tools/export_models.py models/src/main/assets
+
+      - name: Build test-ads app + device tests
+        run: |
+          chmod +x gradlew
+          # Sample portrait from the GFPGAN project, used only by the test.
+          curl -sfL -o app/src/androidTest/assets/face.jpg https://raw.githubusercontent.com/TencentARC/GFPGAN/master/inputs/whole_imgs/00.jpg || true
+          ./gradlew :app:bundleDebug :app:assembleDebugAndroidTest --stacktrace
+          curl -sL -o "$RUNNER_TEMP/bundletool.jar" "$BUNDLETOOL"
+          java -jar "$RUNNER_TEMP/bundletool.jar" build-apks --bundle=app/build/outputs/bundle/debug/app-debug.aab \
+            --output="$RUNNER_TEMP/d.apks" --mode=universal --ks=app/debug.keystore --ks-pass=pass:android \
+            --ks-key-alias=androiddebugkey --key-pass=pass:android
+          unzip -o -q "$RUNNER_TEMP/d.apks" universal.apk -d "$RUNNER_TEMP"
+          cp "$RUNNER_TEMP/universal.apk" app-under-test.apk
+          cp app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk tests.apk
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run on Android 14 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          ram-size: 4096M
+          disk-size: 8G
+          cores: 4
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: bash tools/run_device_tests.sh
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: device-test-results
+          path: devtest/
+
+      - name: Save device results to the 'device-test' branch
+        if: always()
+        run: |
+          mkdir -p /tmp/dt && cp -r devtest/. /tmp/dt/ 2>/dev/null || true
+          git config user.name "iep-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git checkout --orphan device-test
+          git rm -rfq . || true
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -r /tmp/dt/. .
+          git add -A
+          git commit -qm "Device test for ${GITHUB_SHA::7}" || true
+          git push -f origin device-test

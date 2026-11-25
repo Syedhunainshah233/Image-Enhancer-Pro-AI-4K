@@ -172,3 +172,18 @@ fun AdLoadingOverlay() {
         }
     }
 }
+
+/** Back or Cancel while enhancing: ask first, so the work is not lost by mistake. */
+@Composable
+fun StopDialog(vm: AppViewModel) {
+    DialogCard({ vm.showStop = false }) {
+        Text("⚠️", fontSize = 40.sp)
+        Text("Stop enhancing?", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+        Spacer(Modifier.height(6.dp))
+        Text("Your photo is almost ready. If you stop now, this enhance is lost.", color = C.muted, textAlign = TextAlign.Center, fontSize = 14.sp)
+        Spacer(Modifier.height(18.dp))
+        GradientButton("Keep enhancing", onClick = { vm.showStop = false })
+        Spacer(Modifier.height(4.dp))
+        TextLink("Stop") { vm.cancel() }
+    }
+}

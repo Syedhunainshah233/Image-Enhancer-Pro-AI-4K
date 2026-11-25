@@ -162,7 +162,7 @@ class Enhancer(private val context: Context) {
         }
     }
 
-    private suspend fun detectFaces(src: Bitmap): List<FloatArray> {
+    internal suspend fun detectFaces(src: Bitmap): List<FloatArray> {
         val long = max(src.width, src.height)
         val s = if (long > 1280) 1280f / long else 1f
         val det = if (s < 1f) Bitmap.createScaledBitmap(src, (src.width * s).toInt(), (src.height * s).toInt(), true) else src

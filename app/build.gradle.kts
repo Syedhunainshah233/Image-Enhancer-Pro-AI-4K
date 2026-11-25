@@ -16,6 +16,7 @@ android {
         versionName = "1.0.0"
         // Crash reports in Play Console with readable native stack traces.
         ndk { debugSymbolLevel = "SYMBOL_TABLE" }
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     assetPacks += listOf(":models")
@@ -136,4 +137,10 @@ dependencies {
     testImplementation("io.github.takahirom.roborazzi:roborazzi:1.32.2")
     testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.32.2")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+
+    // Real-device tests (run on an Android emulator in GitHub Actions)
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test:rules:1.6.1")
+    androidTestImplementation("androidx.test:core-ktx:1.6.1")
+    androidTestImplementation("androidx.test.ext:junit-ktx:1.2.1")
 }
